@@ -1,0 +1,18 @@
+name: ci
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+jobs:
+  validate:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Lint de YAML
+        run: pipx run yamllint .
+
+      - name: Validar docker-compose
+        run: docker compose --env-file .env.example config -q

@@ -1,0 +1,70 @@
+name: beacon
+
+services:
+  nats:
+    image: nats:2.10-alpine
+    command: ["-m", "8222"]
+    ports:
+      - "${NATS_PORT:-4222}:4222"
+      - "${NATS_MONITOR_PORT:-8222}:8222"
+    healthcheck:
+      test: ["CMD", "wget", "-qO-", "http://127.0.0.1:8222/healthz"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+    restart: unless-stopped
+
+  alerts-db:
+    image: timescale/timescaledb:latest-pg16
+    environment:
+      POSTGRES_USER: ${ALERTS_DB_USER:-beacon}
+      POSTGRES_PASSWORD: ${ALERTS_DB_PASSWORD:-beacon}
+      POSTGRES_DB: ${ALERTS_DB_NAME:-alerts}
+    ports:
+      - "${ALERTS_DB_PORT:-5433}:5432"
+    volumes:
+      - alerts-db-data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${ALERTS_DB_USER:-beacon} -d ${ALERTS_DB_NAME:-alerts}"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+    restart: unless-stopped
+
+  incidents-db:
+    image: postgres:16-alpine
+    environment:
+      POSTGRES_USER: ${INCIDENTS_DB_USER:-beacon}
+      POSTGRES_PASSWORD: ${INCIDENTS_DB_PASSWORD:-beacon}
+      POSTGRES_DB: ${INCIDENTS_DB_NAME:-incidents}
+    ports:
+      - "${INCIDENTS_DB_PORT:-5434}:5432"
+    volumes:
+      - incidents-db-data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${INCIDENTS_DB_USER:-beacon} -d ${INCIDENTS_DB_NAME:-incidents}"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+    restart: unless-stopped
+
+  notifications-db:
+    image: mongo:7
+    environment:
+      MONGO_INITDB_ROOT_USERNAME: ${NOTIFICATIONS_DB_USER:-beacon}
+      MONGO_INITDB_ROOT_PASSWORD: ${NOTIFICATIONS_DB_PASSWORD:-beacon}
+    ports:
+      - "${NOTIFICATIONS_DB_PORT:-27017}:27017"
+    volumes:
+      - notifications-db-data:/data/db
+    healthcheck:
+      test: ["CMD", "mongosh", "--quiet", "--eval", "db.adminCommand('ping').ok"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+    restart: unless-stopped
+
+volumes:
+  alerts-db-data:
+  incidents-db-data:
+  notifications-db-data:
