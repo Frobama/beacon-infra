@@ -1,6 +1,7 @@
 name: beacon
 
 services:
+  # ---------- Infraestructura ----------
   nats:
     image: nats:2.10-alpine
     command: ["-m", "8222"]
@@ -62,6 +63,50 @@ services:
       interval: 5s
       timeout: 5s
       retries: 10
+    restart: unless-stopped
+
+  # ---------- Aplicaciones (perfil "apps") ----------
+  incidents:
+    profiles: ["apps"]
+    build:
+      context: ../beacon-incidents
+    environment:
+      DB_URL: jdbc:postgresql://incidents-db:5432/${INCIDENTS_DB_NAME:-incidents}
+      DB_USER: ${INCIDENTS_DB_USER:-beacon}
+      DB_PASSWORD: ${INCIDENTS_DB_PASSWORD:-beacon}
+      GRPC_PORT: "9090"
+    ports:
+      - "${INCIDENTS_GRPC_PORT:-9090}:9090"
+      - "${INCIDENTS_HTTP_PORT:-8081}:8080"
+    depends_on:
+      incidents-db:
+        condition: service_healthy
+    restart: unless-stopped
+
+  backend:
+    profiles: ["apps"]
+    build:
+      context: ../beacon-backend
+    environment:
+      PORT: "3000"
+      INCIDENTS_GRPC_URL: incidents:9090
+      CORS_ORIGIN: http://localhost:${FRONTEND_PORT:-3000}
+    ports:
+      - "${BACKEND_PORT:-3001}:3000"
+    depends_on:
+      - incidents
+    restart: unless-stopped
+
+  frontend:
+    profiles: ["apps"]
+    build:
+      context: ../beacon-frontend
+      args:
+        NEXT_PUBLIC_GRAPHQL_URL: http://localhost:${BACKEND_PORT:-3001}/graphql
+    ports:
+      - "${FRONTEND_PORT:-3000}:3000"
+    depends_on:
+      - backend
     restart: unless-stopped
 
 volumes:
