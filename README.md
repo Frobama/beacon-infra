@@ -44,3 +44,30 @@ Monitoreo de NATS: <http://localhost:8222>
 - Fase 1: se agregan los contenedores de cada servicio.
 - Fase 3: Helm charts y despliegue en Kubernetes (kind).
 - Fase 5: app de demo y RBAC para el MCP.
+
+## Aplicaciones (Fase 1)
+
+Las aplicaciones corren con el perfil `apps` de Compose. Asumen que los repos están como carpetas hermanas:
+
+```
+beacon/
+├── beacon-infra/
+├── beacon-incidents/
+├── beacon-backend/
+└── beacon-frontend/
+```
+
+```bash
+make up-apps    # genera contratos, construye imágenes y levanta todo
+make ps
+make down
+```
+
+| Servicio | URL local |
+|---|---|
+| Frontend | <http://localhost:3000> |
+| Backend GraphQL | <http://localhost:3001/graphql> |
+| Incidentes (gRPC) | `localhost:9090` |
+| Incidentes (actuator) | <http://localhost:8081/actuator/health> |
+
+`make up` sigue levantando solo bases de datos y NATS, útil para desarrollar un servicio fuera de Docker.
